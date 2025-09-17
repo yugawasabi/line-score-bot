@@ -54,8 +54,8 @@ async function handleMessage(event) {
     return;
   }
 
-  // ===== 得点 (+2000, -1500) =====
-  const match = text.match(/^([+-]\d+)$/);
+  // ===== 得点 (+2000, -1500, +2,000 など) =====
+  const match = text.match(/^([+-][\d,]+)$/);
   if (match) {
     const userRef = db.collection('users').doc(userId);
     const userDoc = await userRef.get();
@@ -65,7 +65,10 @@ async function handleMessage(event) {
       return;
     }
 
-    const score = parseInt(match[1], 10);
+    // カンマを削除して数値化
+    const rawScore = match[1].replace(/,/g, '');
+    const score = parseInt(rawScore, 10);
+
     const data = userDoc.data();
     const name = data.name;
     const scores = data.scores || [];
