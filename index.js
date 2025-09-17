@@ -36,7 +36,7 @@ async function handleMessage(event) {
   const userId = event.source.userId;
   const text = event.message.text.trim();
 
-  // 名前登録
+  // ===== 名前登録 =====
   if (text.startsWith('/register ')) {
     const name = text.replace('/register ', '').trim();
     if (!name) {
@@ -48,39 +48,40 @@ async function handleMessage(event) {
     return;
   }
 
-  // ランキング表示
+  // ===== ランキング表示 =====
   if (text === '/ranking') {
     await sendRanking(event.replyToken);
     return;
   }
 
-  // 得点 (+2000, -1500)
+  // ===== 得点 (+2000, -1500) =====
   const match = text.match(/^([+-]\d+)$/);
-  if (!match) {
-    await client.replyMessage(event.replyToken, { type: 'text', text: '得点は +数字 または -数字 の形式で送ってください。\n例: +2000, -1500' });
+  if (match) {
+    const userRef = db.collection('users').doc(userId);
+    const userDoc = await userRef.get();
+
+    if (!userDoc.exists || !userDoc.data().name) {
+      await client.replyMessage(event.replyToken, { type: 'text', text: 'まず名前を登録してください。\n例: /register A' });
+      return;
+    }
+
+    const score = parseInt(match[1], 10);
+    const data = userDoc.data();
+    const name = data.name;
+    const scores = data.scores || [];
+    let total = data.total || 0;
+
+    scores.push(score);
+    total += score;
+
+    await userRef.set({ name, scores, total }, { merge: true });
+
+    await client.replyMessage(event.replyToken, { type: 'text', text: `${name}さんの合計: ${total}点` });
     return;
   }
 
-  const userRef = db.collection('users').doc(userId);
-  const userDoc = await userRef.get();
-
-  if (!userDoc.exists || !userDoc.data().name) {
-    await client.replyMessage(event.replyToken, { type: 'text', text: 'まず名前を登録してください。\n例: /register A' });
-    return;
-  }
-
-  const score = parseInt(match[1], 10);
-  const data = userDoc.data();
-  const name = data.name;
-  const scores = data.scores || [];
-  let total = data.total || 0;
-
-  scores.push(score);
-  total += score;
-
-  await userRef.set({ name, scores, total }, { merge: true });
-
-  await client.replyMessage(event.replyToken, { type: 'text', text: `${name}さんの合計: ${total}点` });
+  // ===== それ以外は無反応 =====
+  return;
 }
 
 // ===== ランキング表示 =====
